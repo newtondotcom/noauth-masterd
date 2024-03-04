@@ -1,4 +1,4 @@
-let botname = "bashox";
+let botname = 'test';
 
 import fs from 'fs/promises';
 let masterUri = "http://141.145.217.120:4000/"
