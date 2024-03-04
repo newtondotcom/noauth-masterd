@@ -1,0 +1,19 @@
+{
+  "name": "noauth-masterd",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "the master do manage docker container",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "main": "index.js",
+  "repository": "https://github.com/newtondotcom/noauth-masterd",
+  "author": "newtondotcom",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dockerode": "^4.0.2",
+    "express": "^4.18.3"
+  }
+}
