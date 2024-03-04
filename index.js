@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import Docker from 'dockerode';
 import fs from 'fs';
+import { exec } from 'child_process';
 
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
@@ -52,14 +53,12 @@ async function reDeploy(bots) {
         console.log(`Container ${containerName} started on port ${port}`);
   
         // Modify file within the running container
-        const modifiedContent = modifyGenerateConstants(containerName);
+        modifyGenerateConstants(containerName);
         const tempFilePath = './generateConstants.js';
-        fs.writeFileSync(tempFilePath, modifiedContent);
+        console.log(`Modified generateConstants.js for ${containerName}`);
         await copyFileToContainer(container.id, tempFilePath, '/usr/src/bot/scripts/');        
-  
-        // Restart the container
+        console.log(`Copied generateConstants.js to ${containerName}`);
         await restartContainer(container.id);
-  
         console.log(`Container ${containerName} restarted`);
       }
     } catch (error) {
@@ -69,15 +68,42 @@ async function reDeploy(bots) {
   }
   
   function modifyGenerateConstants(containerName) {
-    const content = fs.readFileSync('./generateConstants.js', 'utf8');
-    const newContent = content.replace(/let botname =.+;/, `let botname = '${containerName}';`);
-    fs.writeFileSync('./generateConstantsTemp.js', content);
+    try {
+      // Read the contents of generateConstants.js from the local file system
+      let content = fs.readFileSync('./generateConstantsTemp.js', 'utf8');
+      // Modify the content
+      const newContent = content.replace(/^let botname = .+;$/m, `let botname = '${containerName}';`);
+      // Write the modified content to a temporary file
+      fs.writeFileSync('./generateConstants.js', newContent.toString());
+    } catch (error) {
+      console.error('Error modifying generateConstants.js:', error.message);
+      throw error;
+    }
   }
   
   async function copyFileToContainer(containerId, localPath, containerPath) {
-    const container = docker.getContainer(containerId);
-    return container.putArchive(localPath, { path: containerPath });
-  }
+    try {
+      const container = docker.getContainer(containerId);
+  
+      await new Promise((resolve, reject) => {
+        exec(`tar -czf ${localPath}.tar.gz ${localPath}`, (error, stdout, stderr) => {
+          if (error) {
+            console.error(`Error creating tarball: ${error.message}`);
+            reject(error);
+          } else {
+            console.log(`Tarball created: ${localPath}.tar.gz`);
+            resolve();
+          }
+        });
+      });
+  
+      // Put the tarball as an archive to the container
+      await container.putArchive(`${localPath}.tar.gz`, { path: containerPath });
+    } catch (error) {
+      console.error('Error copying file to container:', error.message);
+      throw error;
+    }
+  } 
   
 
 async function pullImage(imageName) {
