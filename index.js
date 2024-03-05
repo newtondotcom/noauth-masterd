@@ -41,8 +41,8 @@ async function localRedeploy(bots) {
   async function deploy1Container(bot) {
     try {
       const Name = bot.container_name;
-      const containerName = Name+"-"+Math.random().toString(36).substring(7);
       const port = bot.port;
+      const containerName = Name+"-"+port;
 
       
       const existingContainer = await getContainerByName(containerName);
@@ -59,7 +59,7 @@ async function localRedeploy(bots) {
       console.log(`Container ${containerName} started on port ${port}`);
 
       
-      modifyGenerateConstants(containerName);
+      modifyGenerateConstants(Name);
       const tempFilePath = './generateConstants.js';
       console.log(`Modified generateConstants.js for ${containerName}`);
       await copyFileToContainer(container.id, tempFilePath, '/usr/src/bot/scripts/');        
@@ -74,38 +74,41 @@ async function localRedeploy(bots) {
 
   async function updateList(bots) {
     try {
-      for (const bot of bots) {
-        const existingContainer = await getContainerByName(bot.container_name);
-        if (existingContainer) {
-          await stopAndRemoveContainer(existingContainer.Id);
-          console.log(`Existing container ${bot.container_name} stopped and removed.`);
-        } else
-          console.log(`No existing container with name ${bot.container_name}.`);
-        await deploy1Container(bot);
-      }
-
+        // Remove containers that are not in the list
         const containerList = await listContainers();
         for (const container of containerList) {
-          const botName = container.Names.split("-")[0].replace('/', '');
+          const botName = container.Names[0].split("-")[0].replace('/', '');
           if (!bots.some(b => b.container_name === botName)) {
             await stopAndRemoveContainer(container.Id);
             console.log(`Container ${container.Names[0]} stopped and removed.`);
+          } else {
+            console.log(`Container ${container.Names[0]} not removed.`);
+            bots = bots.filter(b => b.container_name !== botName);
           }
         }
+        console.log('All containers not in the list stopped and removed.');
+        // Deploy new containers
+        for (const bot of bots) {
+          await deploy1Container(bot);
+        }
+        console.log('All new containers deployed.');
     } catch (error) {
       console.error('Error updating:', error.message);
       throw error;
     }
   }
 
-  async function updateImages(bots) {
+  async function updateImages() {
     try {
       await pullImage(imageName);
-      for (const container of bots) {
+      const containers = await listContainers();
+      for (const container of containers) {
         if (container.Image === imageName) {
           await stopContainer(container.Id);
           await removeContainer(container.Id);
-          await deploy1Container({ container_name: container.container_name , port: container.port });
+          const containerName = container.Names[0].split("-")[0].replace('/', '');
+          const containerPort = container.Names[0].split("-")[1]
+          await deploy1Container({ container_name: containerName , port: containerPort });
         }
       }
     } catch (error) {
@@ -189,7 +192,7 @@ async function removeContainer(containerId) {
 
 async function createContainer(containerName, port) {
   return docker.createContainer({
-    name: containerName+Math.random().toString(36).substring(7),
+    name: containerName,
     HostConfig: {
       PortBindings: {
         '5000/tcp': [{ HostPort: port }]
@@ -211,7 +214,7 @@ async function restartContainer(containerId) {
 
 async function getContainerByName(containerName) {
   const containers = await listContainers();
-  return containers.find(c => c.Names.split("-")[0].includes(`${containerName}`));
+  return containers.find(c => c.Names[0].split("-")[0].includes(`${containerName}`));
 }
 
 async function stopAndRemoveContainer(containerId) {
@@ -219,26 +222,26 @@ async function stopAndRemoveContainer(containerId) {
   await removeContainer(containerId);
 }
 
-app.post('/update', async (req, res) => {
+app.get('/updateList', async (req, res) => {
   try {
-    const bots = req.body;
+    //const bots = req.body.bots;
+    const bots = [{ container_name: 'test', port: '2000' }, { container_name: 'bashox', port: '2001' }];
     await updateList(bots);
     res.send('ok');
   } catch (error) {
     console.error('Error:', error.message);
-    res.status(500).send('Internal Server Error');
+    res.status(500).send(error.message);
   }
 });
 
 
-app.post('/updateImage', async (req, res) => {
+app.get('/updateImage', async (req, res) => {
   try {
-    const bots = req.body;
-    await updateImages(bots);
+    await updateImages();
     res.send('ok');
   } catch (error) {
     console.error('Error:', error.message);
-    res.status(500).send('Internal Server Error');
+    res.status(500).send(error.message);
   }
 });
 
@@ -247,6 +250,12 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/test', async (req, res) => {
+  try {
   await localRedeploy([{ container_name: 'test', port: '2000' }]);
   res.send('Test initiated.');
+  }
+  catch (error) {
+    console.error('Error:', error.message);
+    res.status(500).send(error.message);
+  }
 });
