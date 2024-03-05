@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import Docker from 'dockerode';
 import fs from 'fs';
+import { CronJob } from 'cron';
 import { exec } from 'child_process';
 
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
@@ -260,3 +261,14 @@ app.get('/test', async (req, res) => {
     res.status(500).send(error.message);
   }
 });
+
+
+const job = new CronJob(
+	'30 4 * * *', // cronTime: 4:30 AM every day
+	function () {
+		console.log('You will see this message every day at 4:30 AM');
+	}, // onTick
+	null, // onComplete
+	true, // start
+	'Europe/Paris' // timeZone
+);
