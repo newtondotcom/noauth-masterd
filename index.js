@@ -4,6 +4,7 @@ import Docker from 'dockerode';
 import fs from 'fs';
 import { CronJob } from 'cron';
 import { exec } from 'child_process';
+import fetch from 'node-fetch';
 
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
@@ -262,13 +263,26 @@ app.get('/test', async (req, res) => {
   }
 });
 
+async function triggerSubscriptionsCheck(){
+  try {
+    let masterURL = "http://localhost:8000/check_subscriptions/";
+    const response = await fetch(masterURL);
+    const data = await response.json();
+    console.log(data);
+    if (data.status === "ok") {
+      console.log("Subscriptions checked");
+    }
+  } catch (error) {
+    console.error('Error:', error.message);
+  }
+}
 
 const job = new CronJob(
 	'30 4 * * *', // cronTime: 4:30 AM every day
 	function () {
-		console.log('You will see this message every day at 4:30 AM');
+    triggerSubscriptionsCheck();
 	}, // onTick
 	null, // onComplete
-	true, // start
+	false, // start
 	'Europe/Paris' // timeZone
 );
