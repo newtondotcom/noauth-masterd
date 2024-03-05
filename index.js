@@ -34,7 +34,7 @@ async function localRedeploy(bots) {
       }
     } catch (error) {
       console.error('Error:', error.message);
-      throw error; // Propagate the error for handling in the caller function
+      throw error; 
     }
   }
 
@@ -44,7 +44,7 @@ async function localRedeploy(bots) {
       const containerName = Name+"-"+Math.random().toString(36).substring(7);
       const port = bot.port;
 
-      // Check if a container with the same name already exists
+      
       const existingContainer = await getContainerByName(containerName);
       if (existingContainer) {
         await stopAndRemoveContainer(existingContainer.Id);
@@ -52,13 +52,13 @@ async function localRedeploy(bots) {
       } else
         console.log(`No existing container with name ${containerName}.`);
 
-      // Docker create command with port exposure
+      
       const container = await createContainer(containerName, port);
       await startContainer(container.id);
 
       console.log(`Container ${containerName} started on port ${port}`);
 
-      // Modify file within the running container
+      
       modifyGenerateConstants(containerName);
       const tempFilePath = './generateConstants.js';
       console.log(`Modified generateConstants.js for ${containerName}`);
@@ -68,7 +68,7 @@ async function localRedeploy(bots) {
       console.log(`Container ${containerName} restarted`);
     } catch (error) {
       console.error('Error:', error.message);
-      throw error; // Propagate the error for handling in the caller function
+      throw error; 
     }
   }
 
@@ -116,11 +116,11 @@ async function localRedeploy(bots) {
   
   function modifyGenerateConstants(containerName) {
     try {
-      // Read the contents of generateConstants.js from the local file system
+      
       let content = fs.readFileSync('./generateConstantsTemp.js', 'utf8');
-      // Modify the content
+      
       const newContent = content.replace(/^let botname = .+;$/m, `let botname = '${containerName}';`);
-      // Write the modified content to a temporary file
+      
       fs.writeFileSync('./generateConstants.js', newContent.toString());
     } catch (error) {
       console.error('Error modifying generateConstants.js:', error.message);
@@ -144,7 +144,7 @@ async function localRedeploy(bots) {
         });
       });
   
-      // Put the tarball as an archive to the container
+      
       await container.putArchive(`${localPath}.tar.gz`, { path: containerPath });
     } catch (error) {
       console.error('Error copying file to container:', error.message);
@@ -166,7 +166,7 @@ async function pullImage(imageName) {
         }
 
         function onProgress(event) {
-          // You can handle progress events here if needed
+          
         }
       }
     });
