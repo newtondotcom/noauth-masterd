@@ -76,6 +76,7 @@ async function localRedeploy(bots) {
     try {
         // Remove containers that are not in the list
         const containerList = await listContainers();
+        console.log('List of containers:', containerList);
         for (const container of containerList) {
           const botName = container.Names[0].split("-")[0].replace('/', '');
           if (!bots.some(b => b.container_name === botName)) {
@@ -106,8 +107,8 @@ async function localRedeploy(bots) {
         if (container.Image === imageName) {
           await stopContainer(container.Id);
           await removeContainer(container.Id);
-          const containerName = container.Names[0].split("-")[0].replace('/', '');
-          const containerPort = container.Names[0].split("-")[1]
+          const containerName = container.Names[0].split("-")[0];
+          const containerPort = container.Names[0].split("-")[1];
           await deploy1Container({ container_name: containerName , port: containerPort });
         }
       }
