@@ -223,10 +223,10 @@ async function stopAndRemoveContainer(containerId) {
   await removeContainer(containerId);
 }
 
-app.get('/updateList', async (req, res) => {
+app.post('/updateList', async (req, res) => {
   try {
-    //const bots = req.body.bots;
-    const bots = [{ container_name: 'test', port: '2000' }, { container_name: 'bashox', port: '2001' }];
+    const bots = req.body.bots;
+    //const bots = [{ container_name: 'test', port: '2000' }, { container_name: 'bashox', port: '2001' }];
     await updateList(bots);
     res.send('ok');
   } catch (error) {
@@ -253,7 +253,7 @@ app.get('/health', (req, res) => {
 app.get('/test', async (req, res) => {
   try {
   await localRedeploy([{ container_name: 'test', port: '2000' }]);
-  res.send('Test initiated.');
+  res.send('Testing done.');
   }
   catch (error) {
     console.error('Error:', error.message);
