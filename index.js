@@ -83,6 +83,15 @@ async function localRedeploy(bots) {
           console.log(`No existing container with name ${bot.container_name}.`);
         await deploy1Container(bot);
       }
+
+        const containerList = await listContainers();
+        for (const container of containerList) {
+          const botName = container.Names.split("-")[0].replace('/', '');
+          if (!bots.some(b => b.container_name === botName)) {
+            await stopAndRemoveContainer(container.Id);
+            console.log(`Container ${container.Names[0]} stopped and removed.`);
+          }
+        }
     } catch (error) {
       console.error('Error updating:', error.message);
       throw error;
@@ -202,7 +211,7 @@ async function restartContainer(containerId) {
 
 async function getContainerByName(containerName) {
   const containers = await listContainers();
-  return containers.find(c => c.Names.split("-")[0].includes(`/${containerName}`));
+  return containers.find(c => c.Names.split("-")[0].includes(`${containerName}`));
 }
 
 async function stopAndRemoveContainer(containerId) {
