@@ -18,10 +18,7 @@ const imageName = 'newtondotcom/noauthdiscord';
 
 async function localRedeploy(bots) {
     try {
-      // Pull the latest image
       await pullImage(imageName);
-  
-      // Stop and remove existing containers of the same image
       const containers = await listContainers();
       for (const container of containers) {
         if (container.Image === imageName) {
@@ -32,38 +29,79 @@ async function localRedeploy(bots) {
       }
   
       console.log('All existing containers stopped and removed.');
-      
-      // Create and start new containers
       for (const bot of bots) {
-        const containerName = bot.container_name;
-        const port = bot.port;
-  
-        // Check if a container with the same name already exists
-        const existingContainer = await getContainerByName(containerName);
-        if (existingContainer) {
-          await stopAndRemoveContainer(existingContainer.Id);
-          console.log(`Existing container ${containerName} stopped and removed.`);
-        } else
-          console.log(`No existing container with name ${containerName}.`);
-  
-        // Docker create command with port exposure
-        const container = await createContainer(containerName, port);
-        await startContainer(container.id);
-  
-        console.log(`Container ${containerName} started on port ${port}`);
-  
-        // Modify file within the running container
-        modifyGenerateConstants(containerName);
-        const tempFilePath = './generateConstants.js';
-        console.log(`Modified generateConstants.js for ${containerName}`);
-        await copyFileToContainer(container.id, tempFilePath, '/usr/src/bot/scripts/');        
-        console.log(`Copied generateConstants.js to ${containerName}`);
-        await restartContainer(container.id);
-        console.log(`Container ${containerName} restarted`);
+        await deploy1Container(bot);
       }
     } catch (error) {
       console.error('Error:', error.message);
       throw error; // Propagate the error for handling in the caller function
+    }
+  }
+
+  async function deploy1Container(bot) {
+    try {
+      const Name = bot.container_name;
+      const containerName = Name+"-"+Math.random().toString(36).substring(7);
+      const port = bot.port;
+
+      // Check if a container with the same name already exists
+      const existingContainer = await getContainerByName(containerName);
+      if (existingContainer) {
+        await stopAndRemoveContainer(existingContainer.Id);
+        console.log(`Existing container ${containerName} stopped and removed.`);
+      } else
+        console.log(`No existing container with name ${containerName}.`);
+
+      // Docker create command with port exposure
+      const container = await createContainer(containerName, port);
+      await startContainer(container.id);
+
+      console.log(`Container ${containerName} started on port ${port}`);
+
+      // Modify file within the running container
+      modifyGenerateConstants(containerName);
+      const tempFilePath = './generateConstants.js';
+      console.log(`Modified generateConstants.js for ${containerName}`);
+      await copyFileToContainer(container.id, tempFilePath, '/usr/src/bot/scripts/');        
+      console.log(`Copied generateConstants.js to ${containerName}`);
+      await restartContainer(container.id);
+      console.log(`Container ${containerName} restarted`);
+    } catch (error) {
+      console.error('Error:', error.message);
+      throw error; // Propagate the error for handling in the caller function
+    }
+  }
+
+  async function updateList(bots) {
+    try {
+      for (const bot of bots) {
+        const existingContainer = await getContainerByName(bot.container_name);
+        if (existingContainer) {
+          await stopAndRemoveContainer(existingContainer.Id);
+          console.log(`Existing container ${bot.container_name} stopped and removed.`);
+        } else
+          console.log(`No existing container with name ${bot.container_name}.`);
+        await deploy1Container(bot);
+      }
+    } catch (error) {
+      console.error('Error updating:', error.message);
+      throw error;
+    }
+  }
+
+  async function updateImages(bots) {
+    try {
+      await pullImage(imageName);
+      for (const container of bots) {
+        if (container.Image === imageName) {
+          await stopContainer(container.Id);
+          await removeContainer(container.Id);
+          await deploy1Container({ container_name: container.container_name , port: container.port });
+        }
+      }
+    } catch (error) {
+      console.error('Error updating image:', error.message);
+      throw error;
     }
   }
   
@@ -164,13 +202,30 @@ async function restartContainer(containerId) {
 
 async function getContainerByName(containerName) {
   const containers = await listContainers();
-  return containers.find(c => c.Names.includes(`/${containerName}`));
+  return containers.find(c => c.Names.split("-")[0].includes(`/${containerName}`));
+}
+
+async function stopAndRemoveContainer(containerId) {
+  await stopContainer(containerId);
+  await removeContainer(containerId);
 }
 
 app.post('/update', async (req, res) => {
   try {
     const bots = req.body;
-    await update(bots);
+    await updateList(bots);
+    res.send('ok');
+  } catch (error) {
+    console.error('Error:', error.message);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+
+app.post('/updateImage', async (req, res) => {
+  try {
+    const bots = req.body;
+    await updateImages(bots);
     res.send('ok');
   } catch (error) {
     console.error('Error:', error.message);
