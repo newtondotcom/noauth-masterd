@@ -16,7 +16,7 @@ app.listen(3000, () =>
 
 const imageName = 'newtondotcom/noauthdiscord';
 
-async function reDeploy(bots) {
+async function localRedeploy(bots) {
     try {
       // Pull the latest image
       await pullImage(imageName);
@@ -157,24 +157,6 @@ async function startContainer(containerId) {
   return container.start();
 }
 
-async function execCommand(containerId, cmd) {
-  const container = docker.getContainer(containerId);
-  return new Promise((resolve, reject) => {
-    container.exec({ Cmd: cmd, AttachStdout: true, AttachStderr: true }, (err, exec) => {
-      if (err) reject(err);
-      else {
-        exec.start((err, stream) => {
-          if (err) reject(err);
-          else {
-            container.modem.demuxStream(stream, process.stdout, process.stderr);
-            stream.on('end', () => resolve());
-          }
-        });
-      }
-    });
-  });
-}
-
 async function restartContainer(containerId) {
   const container = docker.getContainer(containerId);
   return container.restart();
@@ -188,7 +170,7 @@ async function getContainerByName(containerName) {
 app.post('/update', async (req, res) => {
   try {
     const bots = req.body;
-    await reDeploy(bots);
+    await update(bots);
     res.send('ok');
   } catch (error) {
     console.error('Error:', error.message);
@@ -201,6 +183,6 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/test', async (req, res) => {
-  await reDeploy([{ container_name: 'test', port: '2000' }]);
+  await localRedeploy([{ container_name: 'test', port: '2000' }]);
   res.send('Test initiated.');
 });
