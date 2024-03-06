@@ -103,6 +103,7 @@ async function localRedeploy(bots) {
 
   async function updateImages() {
     try {
+      await removeOldImages();
       await pullImage(imageName);
       const containers = await listContainers();
       for (const container of containers) {
@@ -223,6 +224,15 @@ async function getContainerByName(containerName) {
 async function stopAndRemoveContainer(containerId) {
   await stopContainer(containerId);
   await removeContainer(containerId);
+}
+
+async function removeOldImages() {
+  const images = await docker.listImages();
+  for (const image of images) {
+    if (image.RepoTags && image.RepoTags[0] === imageName + ':latest') {
+      await removeImage(image.Id);
+    }
+  }
 }
 
 app.post('/updateList', async (req, res) => {
