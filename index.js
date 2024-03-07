@@ -274,7 +274,7 @@ app.post('/remove', async (req, res) => {
     console.error('Error:', error.message);
     res.status(500).send(error.message);
   }
-}
+});
 
 
 app.get('/updateImage', async (req, res) => {
