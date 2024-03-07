@@ -247,6 +247,35 @@ app.post('/updateList', async (req, res) => {
   }
 });
 
+app.post('/add', async (req, res) => {
+  try {
+    const bot = req.body.bot;
+    await deploy1Container(bot);
+    res.send('ok');
+  } catch (error) {
+    console.error('Error:', error.message);
+    res.status(500).send(error.message);
+  }
+});
+
+app.post('/remove', async (req, res) => {
+  try {
+    const bot = req.body.bot;
+    const botName = bot.container_name;
+    const port = bot.port;
+    const containerName = botName+"-"+port;
+    const container = await getContainerByName(containerName);
+    if (container) {
+      await stopAndRemoveContainer(container.Id);
+      console.log(`Container ${containerName} stopped and removed.`);
+    }
+    res.send('ok');
+  } catch (error) {
+    console.error('Error:', error.message);
+    res.status(500).send(error.message);
+  }
+}
+
 
 app.get('/updateImage', async (req, res) => {
   try {
