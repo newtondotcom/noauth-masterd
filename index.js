@@ -16,8 +16,8 @@ app.use(express.json());
 
 app.listen(3000, async () => {
   console.log('App listening on port 3000!');
+  await removeOldImages();
   await pullImage(imageName);   
-  console.log('Image pulled');
 });
 
 const imageName = 'newtondotcom/noauthdiscord';
@@ -170,6 +170,7 @@ async function pullImage(imageName) {
         function onFinished(err, output) {
           if (err) reject(err);
           else resolve(output);
+          console.log('Image pulled:', imageName);
         }
 
         function onProgress(event) {
@@ -232,11 +233,16 @@ async function stopAndRemoveContainer(containerId) {
   await removeContainer(containerId);
 }
 
+async function removeImage(imageId) {
+  return docker.getImage(imageId).remove();
+}
+
 async function removeOldImages() {
   const images = await docker.listImages();
   for (const image of images) {
     if (image.RepoTags && image.RepoTags[0] === imageName + ':latest') {
       await removeImage(image.Id);
+      console.log(`Image ${imageName} removed.`);
     }
   }
 }
