@@ -5,6 +5,8 @@ import fs from 'fs';
 import { CronJob } from 'cron';
 import { exec } from 'child_process';
 import fetch from 'node-fetch';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
@@ -218,7 +220,13 @@ async function restartContainer(containerId) {
 
 async function getContainerByName(containerName) {
   const containers = await listContainers();
-  return containers.find(c => c.Names[0].split("-")[0].includes(`${containerName}`));
+  for (const container of containers) {
+    if (container.Names[0].includes(containerName)) {
+      return container;
+    }
+  }
+  console.log(`No container with name ${containerName} found.`);
+  return null;
 }
 
 async function stopAndRemoveContainer(containerId) {
@@ -268,6 +276,8 @@ app.post('/remove', async (req, res) => {
     if (container) {
       await stopAndRemoveContainer(container.Id);
       console.log(`Container ${containerName} stopped and removed.`);
+    } else {
+      console.log(`No existing container with name ${containerName}.`);
     }
     res.send('ok');
   } catch (error) {
@@ -302,11 +312,25 @@ app.get('/test', async (req, res) => {
   }
 });
 
+app.get('/list', async (req, res) => {
+  try {
+    const containers = await listContainers();
+    res.send(containers);
+  } catch (error) {
+    console.error('Error:', error.message);
+    res.status(500).send(error.message);
+  }
+});
+
 async function triggerSubscriptionsCheck(){
   try {
-    let masterURL = "http://localhost:8000/check_subscriptions/";
-    const response = await fetch(masterURL);
-    const data = await response.json();
+    let masterURL = process.env.DJANGO_URL + "check_subscriptions/"
+    let header = {
+      'Authorization': 'Api-Key ' + process.env.API_KEY
+    }
+    console.log(masterURL);
+    const response = await fetch(masterURL, {headers: header});
+    const data = await response.text();
     console.log(data);
     if (data.status === "ok") {
       console.log("Subscriptions checked");
@@ -316,12 +340,22 @@ async function triggerSubscriptionsCheck(){
   }
 }
 
+app.get('/checkSubscriptions', async (req, res) => {
+  try {
+    await triggerSubscriptionsCheck();
+    res.send('All subscriptions checked.');
+  } catch (error) {
+    console.error('Error:', error.message);
+    res.status(500).send(error.message);
+  }
+});
+
 const job = new CronJob(
 	'30 4 * * *', // cronTime: 4:30 AM every day
 	function () {
     triggerSubscriptionsCheck();
 	}, // onTick
 	null, // onComplete
-	false, // start
+	true, // start
 	'Europe/Paris' // timeZone
 );
