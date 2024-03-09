@@ -50,28 +50,24 @@ async function localRedeploy(bots) {
       const port = bot.port;
       const containerName = Name+"-"+port;
 
-      
       const existingContainer = await getContainerByName(containerName);
       if (existingContainer) {
         await stopAndRemoveContainer(existingContainer.Id);
         console.log(`Existing container ${containerName} stopped and removed.`);
-      } else
-        console.log(`No existing container with name ${containerName}.`);
+      }
 
-      
+      modifyGenerateConstants(Name);
+      const tempFilePath = './generateConstants.js';
+      console.log(`Modified generateConstants.js for ${containerName}`);
+
       const container = await createContainer(containerName, port);
       await startContainer(container.id);
 
       console.log(`Container ${containerName} started on port ${port}`);
-
-      
-      modifyGenerateConstants(Name);
-      const tempFilePath = './generateConstants.js';
-      console.log(`Modified generateConstants.js for ${containerName}`);
       await copyFileToContainer(container.id, tempFilePath, '/usr/src/bot/scripts/');        
       console.log(`Copied generateConstants.js to ${containerName}`);
-      await restartContainer(container.id);
-      console.log(`Container ${containerName} restarted`);
+      //await restartContainer(container.id);
+      //console.log(`Container ${containerName} restarted`);
     } catch (error) {
       console.error('Error:', error.message);
       throw error; 
