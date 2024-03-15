@@ -8,6 +8,11 @@ import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 dotenv.config();
 
+
+let header = {
+  'Authorization': 'Api-Key ' + process.env.API_KEY
+}
+
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
 const app = express();
@@ -326,12 +331,20 @@ app.get('/list', async (req, res) => {
   }
 });
 
+app.get('/repull', async (req, res) => {
+  try {
+    await removeOldImages();
+    await pullImage(imageName);
+    res.send('Image repulled.');
+  } catch (error) {
+    console.error('Error:', error.message);
+    res.status(500).send(error.message);
+  }
+});
+
 async function triggerSubscriptionsCheck(){
   try {
     let masterURL = process.env.DJANGO_URL + "check_subscriptions/"
-    let header = {
-      'Authorization': 'Api-Key ' + process.env.API_KEY
-    }
     console.log(masterURL);
     const response = await fetch(masterURL, {headers: header});
     const data = await response.text();
