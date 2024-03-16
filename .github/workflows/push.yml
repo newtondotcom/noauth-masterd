@@ -1,8 +1,5 @@
 name: Build and Push Docker Images
 
-env:
-  DOCKER_TAG : newtondotcom/noauthmasterd:latest
-
 on:
   push:
     branches:
@@ -26,6 +23,9 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.DOCKER_TAG }}
+          tags: ${{ secrets.DOCKER_TAG }}
           platforms: linux/arm64
           #linux/amd64, 
+          secrets: |
+            "API_KEY=${{ secrets.API_KEY}}"
+            "DJANGO_URL=${{ secrets.DJANGO_URL}}"

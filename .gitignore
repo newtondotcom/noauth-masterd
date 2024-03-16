@@ -132,3 +132,5 @@ generateConstants.js
 generateConstants.js.tar.gz
 generateConstantsTemp.js.tar.gz
 generateConstants.js
+
+.env
