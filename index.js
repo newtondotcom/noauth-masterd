@@ -21,7 +21,6 @@ app.use(express.json());
 
 app.listen(3000, async () => {
   console.log('App listening on port 3000!');
-  await removeOldImages();
   await pullImage(imageName);   
 });
 
@@ -29,7 +28,6 @@ const imageName = 'newtondotcom/noauthdiscord';
 
 async function localRedeploy(bots) {
     try {
-      await pullImage(imageName);
       const containers = await listContainers();
       for (const container of containers) {
         if (container.Image === imageName) {
@@ -79,37 +77,8 @@ async function localRedeploy(bots) {
     }
   }
 
-  async function updateList(bots) {
-    try {
-        // Remove containers that are not in the list
-        const containerList = await listContainers();
-        console.log('List of containers:', containerList);
-        for (const container of containerList) {
-          const botName = container.Names[0].split("-")[0].replace('/', '');
-          if (!bots.some(b => b.container_name === botName)) {
-            await stopAndRemoveContainer(container.Id);
-            console.log(`Container ${container.Names[0]} stopped and removed.`);
-          } else {
-            console.log(`Container ${container.Names[0]} not removed.`);
-            bots = bots.filter(b => b.container_name !== botName);
-          }
-        }
-        console.log('All containers not in the list stopped and removed.');
-        // Deploy new containers
-        for (const bot of bots) {
-          await deploy1Container(bot);
-        }
-        console.log('All new containers deployed.');
-    } catch (error) {
-      console.error('Error updating:', error.message);
-      throw error;
-    }
-  }
-
   async function updateImages() {
     try {
-      await removeOldImages();
-      await pullImage(imageName);
       const containers = await listContainers();
       for (const container of containers) {
         if (container.Image === imageName) {
@@ -118,6 +87,7 @@ async function localRedeploy(bots) {
           const containerName = container.Names[0].split("-")[0];
           const containerPort = container.Names[0].split("-")[1];
           await deploy1Container({ container_name: containerName , port: containerPort });
+          console.log(`Container ${container.Names[0]} stopped, removed and redeployed.`);
         }
       }
     } catch (error) {
@@ -252,18 +222,6 @@ async function removeOldImages() {
   }
 }
 
-app.post('/updateList', async (req, res) => {
-  try {
-    const bots = req.body.bots;
-    //const bots = [{ container_name: 'test', port: '2000' }, { container_name: 'bashox', port: '2001' }];
-    await updateList(bots);
-    res.send('ok');
-  } catch (error) {
-    console.error('Error:', error.message);
-    res.status(500).send(error.message);
-  }
-});
-
 app.post('/add', async (req, res) => {
   try {
     const bot = req.body.bot;
@@ -331,9 +289,8 @@ app.get('/list', async (req, res) => {
   }
 });
 
-app.get('/repull', async (req, res) => {
+app.get('/pull', async (req, res) => {
   try {
-    await removeOldImages();
     await pullImage(imageName);
     res.send('Image repulled.');
   } catch (error) {
