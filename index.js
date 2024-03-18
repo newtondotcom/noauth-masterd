@@ -316,7 +316,7 @@ async function triggerSubscriptionsCheck(){
 
 app.get('/checkSubscriptions', async (req, res) => {
   try {
-    // await triggerSubscriptionsCheck();
+    await triggerSubscriptionsCheck();
     res.send('All subscriptions checked.');
   } catch (error) {
     console.error('Error:', error.message);
